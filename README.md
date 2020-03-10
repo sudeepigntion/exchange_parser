@@ -1,5 +1,6 @@
-# exchange_parser
-Exchange Parser
+# Exchange Parser
+
+Exchange Parser for fast data transmission
 
 This repository is all about parsing byte array to hashmap and vice versa.
 Why one should use byte array rather than json. There are many reasons behind that
