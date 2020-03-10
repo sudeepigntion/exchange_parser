@@ -10,10 +10,10 @@ Why one should use byte array rather than json. There are many reasons behind th
 
 There are lots of exchanges who uses FIX/FAST protocols for encoding and decoding the packets but there are also exchanges who uses byte array as they schema for transmission of data. Which exchanges uses byte array well they are India's biggest stock exchange like NSE (National Stock Exchange) and BSE (Bombay Stock Exchange).
 
-BSE : https://www.bseindia.com/downloads1/ETI_API_Manual_1.4.8.pdf
-NSE/CM: https://www1.nseindia.com/technology/content/nnf/TP_CM_Trimmed_NNF_PROTOCOL_4.1.pdf
-NSE/FO: https://www1.nseindia.com/technology/content/nnf/TP_FO_Trimmed_NNF_PROTOCOL_9.25.pdf
-NSE/CD: https://www1.nseindia.com/technology/content/nnf/TP_COM_Trimmed_NNF_PROTOCOL_1.5.pdf
+    BSE : https://www.bseindia.com/downloads1/ETI_API_Manual_1.4.8.pdf
+    NSE/CM: https://www1.nseindia.com/technology/content/nnf/TP_CM_Trimmed_NNF_PROTOCOL_4.1.pdf
+    NSE/FO: https://www1.nseindia.com/technology/content/nnf/TP_FO_Trimmed_NNF_PROTOCOL_9.25.pdf
+    NSE/CD: https://www1.nseindia.com/technology/content/nnf/TP_COM_Trimmed_NNF_PROTOCOL_1.5.pdf
 
 Using this parser you can easily convert byte array to hashmap and hashmap to byte array.
 
