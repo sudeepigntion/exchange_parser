@@ -1,7 +1,7 @@
 package byte_parser
 
 import(
-	"fmt"
+	"log"
     "io/ioutil"
     "path/filepath"
     "os"
@@ -10,6 +10,7 @@ import(
     "reflect"
     "strings"
     "encoding/xml"
+    "errors"
 )
 
 type ByteParser struct{
@@ -21,24 +22,30 @@ type ByteParser struct{
 
 func (bb *ByteParser) ParseJson(){
 
+	// reading path
+
 	files, err := ioutil.ReadDir(bb.Path)
 
     if err != nil {
 
-        panic(err)
+        log.Println(err)
 
         return
     }
 
+    // template
+
     bb.Template = make(map[string]interface{})
+
+    // iterating each files and mapping byte array to hashmap
 
     for _, f := range files {
 
-        var fileName = f.Name()
+        fileName := f.Name()
 
-        var extension = filepath.Ext(fileName)
+        extension := filepath.Ext(fileName)
 
-		var name = fileName[0:len(fileName)-len(extension)]
+		name := fileName[0:len(fileName)-len(extension)]
 
 		jsonFile, err := os.Open(bb.Path+"/"+fileName)
 
@@ -46,7 +53,7 @@ func (bb *ByteParser) ParseJson(){
 
 		if err != nil {
 
-		    panic(err)
+		    log.Println(err)
 
 		    return
 
@@ -54,13 +61,13 @@ func (bb *ByteParser) ParseJson(){
 
 		defer jsonFile.Close()
 
-		var body = make(map[string]interface{})
+		body := make(map[string]interface{})
 
 		json.Unmarshal(byteValue, &body)
 
 		bb.Template[name] = body
 
-		fmt.Println("Template "+name+" loaded")
+		log.Println("Template "+name+" loaded")
 
     }
 }
@@ -71,7 +78,7 @@ func (bb *ByteParser) ParseXml(){
 
     if err != nil {
 
-        panic(err)
+        log.Println(err)
 
         return
     }
@@ -80,11 +87,11 @@ func (bb *ByteParser) ParseXml(){
 
     for _, f := range files {
 
-        var fileName = f.Name()
+        fileName := f.Name()
 
-        var extension = filepath.Ext(fileName)
+        extension := filepath.Ext(fileName)
 
-		var name = fileName[0:len(fileName)-len(extension)]
+		name := fileName[0:len(fileName)-len(extension)]
 
 		xmlFile, err := os.Open(bb.Path+"/"+fileName)
 
@@ -92,7 +99,7 @@ func (bb *ByteParser) ParseXml(){
 
 		if err != nil {
 
-		    panic(err)
+		    log.Println(err)
 
 		    return
 
@@ -100,22 +107,20 @@ func (bb *ByteParser) ParseXml(){
 
 		defer xmlFile.Close()
 
-		var body = make(map[string]interface{})
+		body := make(map[string]interface{})
 
 		xml.Unmarshal(byteValue, &body)
 
 		bb.Template[name] = body
 
-		fmt.Println("Template "+name+" loaded")
+		log.Println("Template "+name+" loaded")
 
     }
 }
 
-func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID string) []byte{
+func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID string) ([]byte, error){
 
-	var byteBuffer ByteBuffer.Buffer
-
-	byteBuffer = ByteBuffer.Buffer{
+	byteBuffer := ByteBuffer.Buffer{
 		Endian:"big",
 	}
 
@@ -126,37 +131,33 @@ func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID
 	}
 
 	if bb.Template[templateID] == nil{
-		panic("No template id found")
-		return nil
+		return nil, errors.New("No template id found")
 	}
 
-	var template = bb.Template[templateID].(map[string]interface{})
+	template := bb.Template[templateID].(map[string]interface{})
 
 	if template == nil{
-		panic("Invalid json, no template key found")
-		return nil
+		return nil, errors.New("Invalid json, no template key found")
 	}
 
 	if template["Template"] == nil{
-		panic("Invalid json, no template key found")
-		return nil
+		return nil, errors.New("Invalid json, no template key found")
 	}
 
-	var templateArray = template["Template"].([]interface {})
+	templateArray := template["Template"].([]interface {})
 
 	for index := range templateArray{
 
-		var hashMap = templateArray[index].(map[string]interface{})
+		hashMap := templateArray[index].(map[string]interface{})
 
-		var key = hashMap["Key"].(string)
+		key := hashMap["Key"].(string)
 
-		var dataType = hashMap["DataType"].(string)
+		dataType := hashMap["DataType"].(string)
 
-		var size = int(hashMap["Size"].(float64))
+		size := int(hashMap["Size"].(float64))
 
 		if jsonMap[key] == nil{
-			panic("Invalid key, no key found in template file")
-			break
+			return nil, errors.New("Invalid key, no key found in template file, "+key)
 		}
 
 		if dataType == "byte"{
@@ -173,7 +174,7 @@ func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID
 
 			}else if reflect.TypeOf(jsonMap[key]).String() == "string"{
 
-				var byteTemp = []byte(jsonMap[key].(string))
+				byteTemp := []byte(jsonMap[key].(string))
 
 				byteData = byteTemp[0]
 
@@ -183,11 +184,11 @@ func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID
 
 		}else if dataType == "string"{
 
-			var stringVal = jsonMap[key].(string)
+			stringVal := jsonMap[key].(string)
 
 			if len(stringVal) < size{
 
-				var diff = size - len(stringVal)
+				diff := size - len(stringVal)
 
 				for i := 0; i < diff; i++ {
 
@@ -198,8 +199,7 @@ func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID
 			}
 
 			if len(stringVal) != size{
-				panic("Invalid size, does not match with the size defined in the template key: "+key)
-				break
+				return nil, errors.New("Invalid size, does not match with the size defined in the template key: "+key)
 			}
 
 			byteBuffer.Put([]byte(stringVal))
@@ -224,75 +224,70 @@ func (bb *ByteParser) ParseJsonToByte(jsonMap map[string]interface{}, templateID
 
 			byteBuffer.PutDouble(jsonMap[key].(float64))
 
-		}else{
-
-			panic(dataType)
-
 		}
 
 	}
 
-	return byteBuffer.Array()
+	return byteBuffer.Array(), nil
 
 }
 
-func (bb *ByteParser) ParseToObject(byteArr []byte, templateID string) map[string]interface{}{
+func (bb *ByteParser) ParseToObject(byteArr []byte, templateID string) (map[string]interface{}, error){
 
 	if bb.Template[templateID] == nil{
-		panic("No template id found")
-		return nil
+		return nil, errors.New("No template id found")
 	}
 
-	var template = bb.Template[templateID].(map[string]interface{})
+	template := bb.Template[templateID].(map[string]interface{})
 
 	if template == nil{
-		panic("Invalid json, no template key found")
-		return nil
+		return nil, errors.New("Invalid json, no template key found")
 	}
 
-	var size = int(template["size"].(float64))
+	size := int(template["size"].(float64))
 
 	if size != len(byteArr){
-		panic("Length, does not match with the template invalid packet")
-		return nil
+		return nil, errors.New("Length, does not match with the template invalid packet")
 	}
 
 	if template["Template"] == nil{
-		panic("Invalid json, no template key found")
-		return nil
+		return nil, errors.New("Invalid json, no template key found")
 	}
 
-	var templateArray = template["Template"].([]interface {})
+	templateArray := template["Template"].([]interface {})
 
 	var byteBuffer ByteBuffer.Buffer
 
-	byteBuffer = ByteBuffer.Buffer{
-		Endian:"big",
-	}
-
 	if bb.EncodingType == "littleendian"{
+
 		byteBuffer = ByteBuffer.Buffer{
 			Endian:"little",
+		}
+
+	}else{
+
+		byteBuffer = ByteBuffer.Buffer{
+			Endian:"big",
 		}
 	}
 
 	byteBuffer.Wrap(byteArr)
 
-	var returnHashMap = make(map[string]interface{})
+	returnHashMap := make(map[string]interface{})
 
 	for index := range templateArray{
 
-		var hashMap = templateArray[index].(map[string]interface{})
+		hashMap := templateArray[index].(map[string]interface{})
 
-		var key = hashMap["Key"].(string)
+		key := hashMap["Key"].(string)
 
-		var dataType = hashMap["DataType"].(string)
+		dataType := hashMap["DataType"].(string)
 
-		var size = int(hashMap["Size"].(float64))
+		size := int(hashMap["Size"].(float64))
 
 		if dataType == "byte"{
 
-			var byteArr = byteBuffer.GetByte()
+			byteArr := byteBuffer.GetByte()
 
 			returnHashMap[key] = int(byteArr[0])
 
@@ -323,5 +318,5 @@ func (bb *ByteParser) ParseToObject(byteArr []byte, templateID string) map[strin
 		}
 	}
 
-	return returnHashMap
+	return returnHashMap, nil
 }
